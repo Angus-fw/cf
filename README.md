@@ -1,41 +1,20 @@
-# Cloudflare CDN Fission
+# DNS 自动更新工具
 
-## 项目介绍
+一个自动测试 IP 连接速度并更新华为云 DNS 记录的工具。
 
-Cloudflare CDN Fission 是一个自动化工具，用于：
+## 功能特性
 
-1. **IP 反查域名**：从 IP 地址列表中反向查询绑定的域名
-2. **域名解析 IP**：从域名列表中解析出对应的 IP 地址
-3. **Ping 测试**：对解析出的 IP 地址进行 Ping 测试，筛选响应时间小于 100ms 的 IP 地址
-4. **DNS 记录更新**：将筛选后的 IP 地址按照运营商分配并更新到华为云 DNS 记录中
-5. **自动化运行**：通过 GitHub Actions 实现每天自动更新 DNS 记录
-
-## 功能特点
-
-- **并发处理**：使用多线程并发执行 DNS 查询和 Ping 测试，提高效率
-- **智能筛选**：筛选响应时间小于 100ms 的 1 开头 IP 地址
-- **按序分配**：按照文件顺序将 IP 地址分配到对应运营商
-- **自动化部署**：通过 GitHub Actions 实现定时自动更新
-- **跨平台支持**：支持 Windows、Linux 和 macOS 系统
-
-## 项目结构
-
-```
-├── .github/workflows/       # GitHub Actions 工作流配置
-│   └── auto-update.yml      # 自动更新工作流
-├── Fission.py               # 主脚本
-├── Fission_ip.txt           # IP 地址列表
-├── Fission_domain.txt       # 域名列表
-├── dns_result.txt           # Ping 测试结果
-├── requirements.txt         # 依赖包列表
-└── README.md                # 项目说明
-```
+- **IP 反查域名**：通过多个网站查询 IP 对应的域名
+- **域名解析 IP**：批量查询域名的 DNS 记录
+- **TCP 连接测试**：测试 IP 的连接速度，筛选快速 IP
+- **运营商线路优化**：根据不同运营商分配最优 IP
+- **自动更新 DNS**：自动更新华为云 DNS 记录
+- **GitHub Actions 自动化**：支持每周自动执行
 
 ## 环境要求
 
-- Python 3.10 或更高版本
-- 华为云账号（用于 DNS 记录更新）
-- GitHub 账号（用于自动化运行）
+- Python 3.10+
+- 华为云账号（需要 DNS 服务权限）
 
 ## 安装依赖
 
@@ -45,115 +24,104 @@ pip install -r requirements.txt
 
 ## 配置说明
 
-### 1. 华为云账号配置
+### 1. 华为云 AccessKey 配置
 
-在 `Fission.py` 文件中修改以下配置：
+#### 方式一：环境变量（推荐）
 
-```python
-# 华为云账号AccessKey，请填写您的AccessKey
-access_key_id = 'YOUR_ACCESS_KEY_ID'
-access_key_secret = 'YOUR_ACCESS_KEY_SECRET'
+在运行脚本前设置环境变量：
 
-# 域名配置
-ZONE_NAME = "your-domain.com"
-RECORD_NAME = "subdomain.your-domain.com"
+```bash
+export HUAWEI_ACCESS_KEY_ID=你的AccessKeyID
+export HUAWEI_ACCESS_KEY_SECRET=你的AccessKeySecret
 ```
 
-### 2. 并发数配置
+#### 方式二：修改代码
 
-根据您的网络环境调整并发数：
+直接修改 `Fission.py` 中的 AccessKey 配置：
 
 ```python
-# 并发数配置
-max_workers_request = 10   # 并发请求数量
-max_workers_dns = 20       # 并发DNS查询数量
-max_workers_ping = 50      # 并发ping测试数量
+ACCESS_KEY_ID = '你的AccessKeyID'
+ACCESS_KEY_SECRET = '你的AccessKeySecret'
+```
+
+### 2. 域名配置
+
+修改 `Fission.py` 中的域名配置：
+
+```python
+ZONE_NAME = "你的域名"
+RECORD_NAME = "*"  # 主机记录，如 @、*、www 等
 ```
 
 ## 使用方法
 
-### 手动运行
-
-1. 在 `Fission_ip.txt` 文件中添加初始 IP 地址
-2. 运行脚本：
+### 本地运行
 
 ```bash
 python Fission.py
 ```
 
-### 自动运行（GitHub Actions）
+### GitHub Actions 自动运行
 
-1. 将项目推送到 GitHub 仓库
-2. 在 GitHub 仓库的 **Settings** → **Secrets and variables** → **Actions** 中添加以下密钥（如果需要）：
-   - `ACCESS_KEY_ID`：华为云 Access Key ID
-   - `ACCESS_KEY_SECRET`：华为云 Access Key Secret
+#### 1. 推送代码到 GitHub
 
-3. GitHub Actions 会自动执行以下操作：
-   - 每天定时运行脚本（UTC 时间 0:00，对应北京时间 8:00）
-   - 执行 Ping 测试，筛选响应时间小于 100ms 的 1 开头 IP 地址
-   - 按照文件顺序将 IP 分配到对应运营商
-   - 更新华为云 DNS 记录
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin <你的仓库地址>
+git push -u origin main
+```
 
-4. 手动触发：
-   - 在 GitHub 仓库的 **Actions** 页面，点击 **Auto Update DNS Records** 工作流
-   - 点击 **Run workflow** 按钮手动触发运行
+#### 2. 配置 GitHub Secrets
 
-## GitHub Actions 使用教程
+在 GitHub 仓库中设置以下 Secrets：
 
-### 工作流配置
+- `HUAWEI_ACCESS_KEY_ID`：华为云 AccessKey ID
+- `HUAWEI_ACCESS_KEY_SECRET`：华为云 AccessKey Secret
 
-工作流文件 `auto-update.yml` 配置如下：
+配置路径：Settings → Secrets and variables → Actions → New repository secret
 
-- **触发方式**：
-  - 定时触发：每天 UTC 时间 0:00 运行
-  - 手动触发：通过 GitHub 界面手动运行
+#### 3. 工作流配置
 
-- **运行环境**：Ubuntu latest
+默认配置为每周一 UTC 0:00（北京时间 8:00）自动运行。
 
-- **执行步骤**：
-  1. 检出代码
-  2. 设置 Python 3.10 环境
-  3. 安装依赖
-  4. 运行 Fission.py 脚本
-  5. （可选）将更新后的结果提交回仓库
+修改执行时间：编辑 `.github/workflows/update-dns.yml` 中的 cron 表达式。
 
-### 查看运行日志
+## 工作流程
 
-1. 进入 GitHub 仓库的 **Actions** 页面
-2. 点击 **Auto Update DNS Records** 工作流
-3. 点击具体的运行记录查看详细日志
+1. **IP 反查域名**：从 `Fission_ip.txt` 读取 IP 列表，查询对应的域名
+2. **域名解析 IP**：从 `Fission_domain.txt` 读取域名列表，解析出所有 IP
+3. **TCP 连接测试**：测试所有 IP 的连接速度，筛选响应时间小于 200ms 的 IP
+4. **运营商测试**：测试 IP 在不同运营商下的连接速度
+5. **DNS 记录更新**：根据测试结果，为不同运营商线路分配最优 IP
 
-### 常见问题
+## 文件说明
 
-1. **运行失败**：检查华为云 Access Key 是否正确配置
-2. **DNS 更新失败**：检查域名配置是否正确，确保有足够的 DNS 记录配额
-3. **没有符合条件的 IP**：检查网络环境，可能需要添加更多初始 IP 地址
-
-## IP 分配规则
-
-脚本按照以下规则将 IP 地址分配到对应运营商：
-
-- **全网默认**：前 2 个 IP 地址
-- **中国移动**：接下来 2 个 IP 地址
-- **中国电信**：接下来 2 个 IP 地址
-- **中国联通**：接下来 2 个 IP 地址
-- **港澳台**：接下来 2 个 IP 地址
+- `Fission.py` - 主程序文件
+- `Fission_ip.txt` - IP 地址列表
+- `Fission_domain.txt` - 域名列表
+- `dns_result.txt` - DNS 查询结果
+- `requirements.txt` - Python 依赖包列表
+- `.github/workflows/update-dns.yml` - GitHub Actions 工作流配置
 
 ## 注意事项
 
-1. **华为云 API 限制**：请确保您的华为云账号有足够的 API 调用配额
-2. **DNS 记录配额**：华为云 DNS 每个域名的记录集数量有限制，请合理配置
-3. **网络环境**：不同网络环境下的 Ping 测试结果可能不同
-4. **安全性**：请不要将包含敏感信息的代码推送到公开仓库
+1. **API 配额**：华为云 DNS API 有调用限制，请合理设置执行频率
+2. **IP 筛选**：默认只选择响应时间小于 200ms 且不以 43 开头的 IP
+3. **IP 前缀**：默认只选择以 104、162、172、108 开头的 IP
+4. **运营商线路**：支持中国移动、中国联通、中国电信、全网默认、港澳台线路
+
+## Cron 表达式说明
+
+格式：`分 时 日 月 周`
+
+- `0 0 * * 1` - 每周一 UTC 0:00（北京时间 8:00）
+- `0 0 * * *` - 每天 UTC 0:00
+- `0 */6 * * *` - 每 6 小时
+- `0 2 * * *` - 每天 UTC 2:00（北京时间 10:00）
 
 ## 许可证
 
-本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request 来改进这个项目。
-
-## 联系方式
-
-如有问题或建议，请通过 GitHub Issues 联系我们。
+MIT License
