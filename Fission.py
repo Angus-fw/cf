@@ -451,7 +451,11 @@ def update_dns_records(ips, operator):
 
     try:
         # 构建完整的记录集名称
-        record_name = f"{RECORD_NAME}.{ZONE_NAME}."
+        # 修复：当RECORD_NAME是@时，直接使用ZONE_NAME，而不是@.ZONE_NAME
+        if RECORD_NAME == "@":
+            record_name = f"{ZONE_NAME}."
+        else:
+            record_name = f"{RECORD_NAME}.{ZONE_NAME}."
         
         # 华为云DNS支持的线路类型代码
         line_types = {
@@ -585,14 +589,23 @@ def update_dns_main():
         print('未找到任何A记录，无需删除')
     else:
         print(f'找到{len(records)}条A记录，准备比对...')
+        # 打印所有获取到的记录名称，用于调试
+        for i, record in enumerate(records):
+            print(f"记录 {i+1}: {record.get('Name')}")
     
     # 只删除目标域名的A记录
-    target_name = f"{RECORD_NAME}.{ZONE_NAME}."
+    # 修复：当RECORD_NAME是@时，直接使用ZONE_NAME，而不是@.ZONE_NAME
+    if RECORD_NAME == "@":
+        target_name = f"{ZONE_NAME}."
+    else:
+        target_name = f"{RECORD_NAME}.{ZONE_NAME}."
     print(f"使用目标记录集名称: {target_name}")
     to_delete = []
     
     for record in records:
-        if record.get('Name') == target_name:
+        record_name = record.get('Name')
+        print(f"比对记录: {record_name} vs 目标: {target_name}")
+        if record_name == target_name:
             to_delete.append(record['RecordsetId'])
 
     if to_delete:
